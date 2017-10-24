@@ -107,11 +107,13 @@ void ecb_encode() {
 
     output = malloc(sizeof(char) * (input_bytes + pad_bytes));
 
+    init_buffers();
     for (int i = 0; i < input_bytes + pad_bytes; i += 8) {
         memcpy(buf_in, input + i, 8);
         DES_ecb_encrypt(buf_in, buf_out, &keysched, DES_ENCRYPT);
         memcpy(output + i, buf_out, 8);
     }
+    free_buffers();
 
     fwrite(output, sizeof(char), input_bytes + pad_bytes, output_file);
 
@@ -123,13 +125,13 @@ void ecb_decode() {
     input = malloc(sizeof(char) * (MAX_BYTES + 8 + 1));
     input_bytes = fread(input, sizeof(char), MAX_BYTES + 8 + 1, input_file);
     if (input_bytes > MAX_BYTES + 8) {
-        printf("Input files is too big, maximum with padding is %d", MAX_BYTES + 8);
+        printf("Input files is too big, maximum with padding is %d.\n", MAX_BYTES + 8);
         free(input);
         close_files();
         exit(1);
     }
     else if (input_bytes % 8 != 0) {
-        printf("Input file content size is not a multiple of 8");
+        printf("Input file content size is not a multiple of 8.\n");
         free(input);
         close_files();
         exit(1);
@@ -138,11 +140,13 @@ void ecb_decode() {
 
     output = malloc(sizeof(char) * input_bytes);
 
+    init_buffers();
     for (int i = 0; i < input_bytes; i += 8) {
         memcpy(buf_in, input + i, 8);
         DES_ecb_encrypt(buf_in, buf_out, &keysched, DES_DECRYPT);
         memcpy(output + i, buf_out, 8);
     }
+    free_buffers();
 
     pad_bytes = output[input_bytes - 1];
     printf("Padding is %d bytes...\n", pad_bytes);
@@ -183,13 +187,13 @@ void cbc_decode() {
     input = malloc(sizeof(char) * (MAX_BYTES + 8 + 1));
     input_bytes = fread(input, sizeof(char), MAX_BYTES + 8 + 1, input_file);
     if (input_bytes > MAX_BYTES + 8) {
-        printf("Input files is too big, maximum with padding is %d", MAX_BYTES + 8);
+        printf("Input files is too big, maximum with padding is %d.\n", MAX_BYTES + 8);
         free(input);
         close_files();
         exit(1);
     }
     else if (input_bytes % 8 != 0) {
-        printf("Input file content size is not a multiple of 8");
+        printf("Input file content size is not a multiple of 8.\n");
         free(input);
         close_files();
         exit(1);
@@ -214,11 +218,9 @@ void main(int argc, char* argv[]) {
     if (argc < 5) print_usage_and_exit(argv[0]);
     parse_args(argv);
     DES_set_key(&key, &keysched);
-    init_buffers();
     if (ACTION == ENC && MODE == ECB) ecb_encode();
     if (ACTION == DEC && MODE == ECB) ecb_decode();
     if (ACTION == ENC && MODE == CBC) cbc_encode();
     if (ACTION == DEC && MODE == CBC) cbc_decode();
     close_files();
-    free_buffers();
 }
