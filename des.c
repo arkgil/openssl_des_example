@@ -102,7 +102,6 @@ void ecb_encode() {
     for(int i = 0; i < pad_bytes; i++) input[input_bytes + pad_bytes - 1 - i] = pad_bytes;
 
     output = malloc(sizeof(char) * (input_bytes + pad_bytes));
-    for(int i = 0; i < input_bytes + pad_bytes; i++) output[i] = 0;
 
     for (int i = 0; i < input_bytes + pad_bytes; i += 8) {
         memcpy(buf_in, input + i, 8);
@@ -126,6 +125,22 @@ void ecb_decode() {
         exit(1);
     }
     printf("Read %d bytes of input data...\n", input_bytes);
+
+    output = malloc(sizeof(char) * input_bytes);
+
+    for (int i = 0; i < input_bytes; i += 8) {
+        memcpy(buf_in, input + i, 8);
+        DES_ecb_encrypt(buf_in, buf_out, &keysched, DES_DECRYPT);
+        memcpy(output + i, buf_out, 8);
+    }
+
+    pad_bytes = output[input_bytes - 1];
+    printf("Padding is %d bytes...\n", pad_bytes);
+
+    fwrite(output, sizeof(char), input_bytes - pad_bytes, output_file);
+
+    free(input);
+    free(output);
 }
 
 void main(int argc, char* argv[]) {
