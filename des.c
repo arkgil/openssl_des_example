@@ -26,6 +26,10 @@ char *output;
 DES_cblock key = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 DES_key_schedule keysched;
 
+// ivec
+DES_cblock ivec_init = {0xE1, 0xE2, 0xE3, 0xD4, 0xD5, 0xC6, 0xC7, 0xA8};
+DES_cblock ivec;
+
 // 8-byte buffers for encryption and decryption
 DES_cblock* buf_in;
 DES_cblock* buf_out;
@@ -124,6 +128,12 @@ void ecb_decode() {
         close_files();
         exit(1);
     }
+    else if (input_bytes % 8 != 0) {
+        printf("Input file content size is not a multiple of 8");
+        free(input);
+        close_files();
+        exit(1);
+    }
     printf("Read %d bytes of input data...\n", input_bytes);
 
     output = malloc(sizeof(char) * input_bytes);
@@ -143,6 +153,63 @@ void ecb_decode() {
     free(output);
 }
 
+void cbc_encode() {
+    input = malloc(sizeof(char) * (MAX_BYTES + 8));
+    input_bytes = fread(input, sizeof(char), MAX_BYTES + 1, input_file);
+    if (input_bytes > MAX_BYTES) {
+        printf("Input file is too big, maximum is %d bytes.\n", MAX_BYTES);
+        free(input);
+        close_files();
+        exit(1);
+    }
+    printf("Read %d bytes of input data...\n", input_bytes);
+
+    pad_bytes = 8 - (input_bytes % 8);
+    printf("Padding will be %d bytes long...\n", pad_bytes);
+    for(int i = 0; i < pad_bytes; i++) input[input_bytes + pad_bytes - 1 - i] = pad_bytes;
+
+    output = malloc(sizeof(char) * (input_bytes + pad_bytes));
+    memcpy(ivec, ivec_init, sizeof(ivec_init));
+
+    DES_ncbc_encrypt(input, output, input_bytes + pad_bytes, &keysched, &ivec, DES_ENCRYPT);
+
+    fwrite(output, sizeof(char), input_bytes + pad_bytes, output_file);
+
+    free(input);
+    free(output);
+}
+
+void cbc_decode() {
+    input = malloc(sizeof(char) * (MAX_BYTES + 8 + 1));
+    input_bytes = fread(input, sizeof(char), MAX_BYTES + 8 + 1, input_file);
+    if (input_bytes > MAX_BYTES + 8) {
+        printf("Input files is too big, maximum with padding is %d", MAX_BYTES + 8);
+        free(input);
+        close_files();
+        exit(1);
+    }
+    else if (input_bytes % 8 != 0) {
+        printf("Input file content size is not a multiple of 8");
+        free(input);
+        close_files();
+        exit(1);
+    }
+    printf("Read %d bytes of input data...\n", input_bytes);
+
+    output = malloc(sizeof(char) * input_bytes);
+    memcpy(ivec, ivec_init, sizeof(ivec_init));
+
+    DES_ncbc_encrypt(input, output, input_bytes, &keysched, &ivec, DES_DECRYPT);
+
+    pad_bytes = output[input_bytes - 1];
+    printf("Padding is %d bytes...\n", pad_bytes);
+
+    fwrite(output, sizeof(char), input_bytes - pad_bytes, output_file);
+
+    free(input);
+    free(output);
+}
+
 void main(int argc, char* argv[]) {
     if (argc < 5) print_usage_and_exit(argv[0]);
     parse_args(argv);
@@ -150,6 +217,8 @@ void main(int argc, char* argv[]) {
     init_buffers();
     if (ACTION == ENC && MODE == ECB) ecb_encode();
     if (ACTION == DEC && MODE == ECB) ecb_decode();
+    if (ACTION == ENC && MODE == CBC) cbc_encode();
+    if (ACTION == DEC && MODE == CBC) cbc_decode();
     close_files();
     free_buffers();
 }
