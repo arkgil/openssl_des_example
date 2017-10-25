@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define MAX_BYTES 1024
+#define MAX_BYTES 65536
 
 #define ENC 0
 #define DEC 1
@@ -14,9 +14,9 @@
 int ACTION; // ENC or DEV
 int MODE;   // ECB or CBC
 
-int input_bytes;
-int pad_bytes;
-int output_bytes;
+int input_bytes; // number of bytes read from input file
+int pad_bytes; // size of PKCS padding in bytes
+int output_bytes; // number of bytes written to output file
 
 // input and output buffers
 char *input;
@@ -27,7 +27,7 @@ DES_cblock key = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 DES_key_schedule keysched;
 
 // ivec
-DES_cblock ivec_init = {0xE1, 0xE2, 0xE3, 0xD4, 0xD5, 0xC6, 0xC7, 0xA8};
+DES_cblock ivec_init = { 0xE1, 0xE2, 0xE3, 0xD4, 0xD5, 0xC6, 0xC7, 0xA8 };
 DES_cblock ivec;
 
 // 8-byte buffers for encryption and decryption
